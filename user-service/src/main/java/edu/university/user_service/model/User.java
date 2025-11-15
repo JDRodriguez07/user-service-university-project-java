@@ -1,7 +1,6 @@
 package edu.university.user_service.model;
 
 import edu.university.user_service.enums.UserStatus;
-import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;
 
