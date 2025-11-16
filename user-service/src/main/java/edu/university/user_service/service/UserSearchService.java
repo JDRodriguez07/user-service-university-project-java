@@ -1,7 +1,5 @@
 package edu.university.user_service.service;
 
-import java.util.Optional;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +11,7 @@ import edu.university.user_service.model.Student;
 import edu.university.user_service.model.Teacher;
 import edu.university.user_service.model.User;
 import edu.university.user_service.repository.AdministratorRepository;
+import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.StudentRepository;
 import edu.university.user_service.repository.TeacherRepository;
 import edu.university.user_service.repository.UserRepository;
@@ -30,29 +29,34 @@ public class UserSearchService {
     private StudentRepository studentRepo;
 
     @Autowired
-    private UserRepository userRepo;
+    private PersonRepository personRepository;
 
     public UserFullResponseDTO search(String value) {
 
-        // Buscar por DNI
-        Optional<User> byDni = userRepo.findByDni(value);
-        if (byDni.isPresent())
-            return mapToFullResponse(byDni.get());
+        // 1. Buscar por DNI en Person
+        var byPersonDni = personRepository.findByDni(value);
+        if (byPersonDni.isPresent()) {
+            // Person extiende de User, así que podemos mapearlo igual
+            return mapToFullResponse(byPersonDni.get());
+        }
 
-        // Admin code
-        Optional<Administrator> admin = adminRepo.findByAdminCode(value);
-        if (admin.isPresent())
+        // 2. Buscar por AdminCode
+        var admin = adminRepo.findByAdminCode(value);
+        if (admin.isPresent()) {
             return mapToFullResponse(admin.get());
+        }
 
-        // Teacher code
-        Optional<Teacher> teacher = teacherRepo.findByTeacherCode(value);
-        if (teacher.isPresent())
+        // 3. Buscar por TeacherCode
+        var teacher = teacherRepo.findByTeacherCode(value);
+        if (teacher.isPresent()) {
             return mapToFullResponse(teacher.get());
+        }
 
-        // Student code
-        Optional<Student> student = studentRepo.findByStudentCode(value);
-        if (student.isPresent())
+        // 4. Buscar por StudentCode
+        var student = studentRepo.findByStudentCode(value);
+        if (student.isPresent()) {
             return mapToFullResponse(student.get());
+        }
 
         throw new UserNotFoundException("User not found for value: " + value);
     }
