@@ -9,13 +9,13 @@ import edu.university.user_service.mapper.AdministratorMapper;
 import edu.university.user_service.model.Administrator;
 import edu.university.user_service.model.Role;
 import edu.university.user_service.repository.AdministratorRepository;
+import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -35,6 +35,12 @@ public class AdministratorService {
 
     @Autowired
     private AdministratorMapper administratorMapper;
+
+    @Autowired
+    private RoleService roleService;
+
+    @Autowired
+    private PersonRepository personRepository;
 
     public List<AdministratorResponseDTO> getAllAdministrators() {
         return administratorRepository.findAll()
@@ -56,23 +62,18 @@ public class AdministratorService {
             throw new EmailAlreadyExistsException(dto.getEmail());
         }
 
-        Administrator admin = administratorMapper.toEntity(dto);
-
-        Role role = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new RoleNotFoundException("ADMIN"));
-        admin.setRole(role);
-
-        if (admin.getStatus() == null) {
-            admin.setStatus(UserStatus.ACTIVE);
+        if (personRepository.existsByDocumentTypeAndDni(dto.getDocumentType(), dto.getDni())) {
+            throw new PersonAlreadyExistsException(dto.getDocumentType().name(), dto.getDni());
         }
 
-        // Código: A + últimos 6 dígitos del DNI
-        String adminCode = generateCodeFromDni("A", admin.getDni());
-        admin.setAdminCode(adminCode);
+        Administrator admin = administratorMapper.toEntity(dto);
 
-        LocalDateTime now = LocalDateTime.now();
-        admin.setCreatedAt(now);
-        admin.setUpdatedAt(now);
+        Role role = roleService.getOrCreateRole("ADMIN", "Administrator role");
+        admin.setRole(role);
+
+        // Código: A + últimos 6 dígitos del DNI
+        String adminCode = generateCodeFromDni("ADM", admin.getDni());
+        admin.setAdminCode(adminCode);
 
         Administrator saved = administratorRepository.save(admin);
         return administratorMapper.toResponse(saved);
@@ -92,12 +93,6 @@ public class AdministratorService {
 
         administratorMapper.updateEntityFromDto(dto, admin);
 
-        if (dto.getStatus() != null) {
-            admin.setStatus(dto.getStatus());
-        }
-
-        admin.setUpdatedAt(LocalDateTime.now());
-
         Administrator updated = administratorRepository.save(admin);
         return administratorMapper.toResponse(updated);
     }
@@ -110,19 +105,23 @@ public class AdministratorService {
         administratorRepository.deleteById(id);
     }
 
-    // ===== HELPER =====
     private String generateCodeFromDni(String prefix, String dni) {
         if (dni == null || dni.isBlank()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
+
+        // Mantener solo números
         String cleaned = dni.replaceAll("\\D", "");
         if (cleaned.isEmpty()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
-        String lastDigits = cleaned.length() <= 6
-                ? cleaned
+
+        // Tomar los últimos 6 dígitos, padded si son menos
+        String lastDigits = cleaned.length() < 6
+                ? String.format("%06d", Integer.parseInt(cleaned))
                 : cleaned.substring(cleaned.length() - 6);
 
         return prefix + lastDigits;
     }
+
 }

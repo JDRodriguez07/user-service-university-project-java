@@ -22,32 +22,31 @@ public class AdministratorController {
     private AdministratorService administratorService;
 
     @GetMapping
-    public ResponseEntity<List<AdministratorResponseDTO>> getAllAdministrators() {
+    public ResponseEntity<List<AdministratorResponseDTO>> getAll() {
         return ResponseEntity.ok(administratorService.getAllAdministrators());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AdministratorResponseDTO> getAdministratorById(@PathVariable Long id) {
+    public ResponseEntity<AdministratorResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(administratorService.getAdministratorById(id));
     }
 
     @PostMapping
-    public ResponseEntity<AdministratorResponseDTO> createAdministrator(
+    public ResponseEntity<AdministratorResponseDTO> create(
             @Valid @RequestBody CreateAdministratorDTO dto) {
-        AdministratorResponseDTO created = administratorService.createAdministrator(dto);
-        return ResponseEntity.ok(created);
+        return ResponseEntity.status(201)
+                .body(administratorService.createAdministrator(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<AdministratorResponseDTO> updateAdministrator(
+    public ResponseEntity<AdministratorResponseDTO> update(
             @PathVariable Long id,
             @Valid @RequestBody UpdateAdministratorDTO dto) {
-        AdministratorResponseDTO updated = administratorService.updateAdministrator(id, dto);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(administratorService.updateAdministrator(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAdministrator(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         administratorService.deleteAdministrator(id);
         return ResponseEntity.noContent().build();
     }

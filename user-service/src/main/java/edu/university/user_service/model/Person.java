@@ -2,9 +2,13 @@ package edu.university.user_service.model;
 
 import java.time.LocalDate;
 
+import edu.university.user_service.enums.DocumentType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,11 +19,12 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "persons")
+@Table(name = "persons", uniqueConstraints = @UniqueConstraint(columnNames = { "document_type", "dni" }))
 public class Person extends User {
 
-    @Column(name = "document_type", nullable = false, length = 20)
-    private String documentType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "document_type", nullable = false, length = 10)
+    private DocumentType documentType;
 
     @Column(name = "dni", nullable = false, length = 20)
     private String dni;
