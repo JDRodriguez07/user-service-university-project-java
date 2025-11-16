@@ -9,6 +9,7 @@ import edu.university.user_service.mapper.AdministratorMapper;
 import edu.university.user_service.model.Administrator;
 import edu.university.user_service.model.Role;
 import edu.university.user_service.repository.AdministratorRepository;
+import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class AdministratorService {
     @Autowired
     private RoleService roleService;
 
+    @Autowired
+    private PersonRepository personRepository;
+
     public List<AdministratorResponseDTO> getAllAdministrators() {
         return administratorRepository.findAll()
                 .stream()
@@ -56,6 +60,10 @@ public class AdministratorService {
 
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new EmailAlreadyExistsException(dto.getEmail());
+        }
+
+        if (personRepository.existsByDocumentTypeAndDni(dto.getDocumentType(), dto.getDni())) {
+            throw new PersonAlreadyExistsException(dto.getDocumentType().name(), dto.getDni());
         }
 
         Administrator admin = administratorMapper.toEntity(dto);

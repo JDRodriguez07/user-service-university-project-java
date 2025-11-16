@@ -8,6 +8,7 @@ import edu.university.user_service.exceptions.*;
 import edu.university.user_service.mapper.TeacherMapper;
 import edu.university.user_service.model.Role;
 import edu.university.user_service.model.Teacher;
+import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.TeacherRepository;
 import edu.university.user_service.repository.UserRepository;
@@ -24,9 +25,6 @@ public class TeacherService {
     private TeacherRepository teacherRepository;
 
     @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -34,6 +32,9 @@ public class TeacherService {
 
     @Autowired
     private RoleService roleService;
+
+    @Autowired
+    private PersonRepository personRepository;
 
     public List<TeacherResponseDTO> getAllTeachers() {
         return teacherRepository.findAll()
@@ -54,6 +55,11 @@ public class TeacherService {
         // 1. Validar email único
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new EmailAlreadyExistsException(dto.getEmail());
+        }
+
+        // 1. Validar DNI único
+        if (personRepository.existsByDocumentTypeAndDni(dto.getDocumentType(), dto.getDni())) {
+            throw new PersonAlreadyExistsException(dto.getDocumentType().name(), dto.getDni());
         }
 
         // 2. Mapear DTO -> Entity
