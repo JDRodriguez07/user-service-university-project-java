@@ -3,8 +3,6 @@ package edu.university.user_service.dto;
 import edu.university.user_service.enums.UserStatus;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 /**
  * DTO used to expose Administrator information.
  */
