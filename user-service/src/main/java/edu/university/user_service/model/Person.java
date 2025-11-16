@@ -16,7 +16,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Table(name = "persons")
 public class Person extends User {
 

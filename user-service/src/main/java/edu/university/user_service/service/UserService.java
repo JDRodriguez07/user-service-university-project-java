@@ -1,19 +1,28 @@
 package edu.university.user_service.service;
 
+import edu.university.user_service.dto.CreateUserDTO;
+import edu.university.user_service.dto.UpdateUserDTO;
+import edu.university.user_service.dto.UserResponseDTO;
 import edu.university.user_service.enums.UserStatus;
 import edu.university.user_service.exceptions.EmailAlreadyExistsException;
 import edu.university.user_service.exceptions.RoleNotFoundException;
+import edu.university.user_service.exceptions.UserNotFoundException;
+import edu.university.user_service.mapper.UserMapper;
 import edu.university.user_service.model.Role;
 import edu.university.user_service.model.User;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.List;
 
+/**
+ * Service layer for managing users.
+ * Works with DTOs and delegates persistence to repositories.
+ */
 @Service
 public class UserService {
 
@@ -23,99 +32,121 @@ public class UserService {
     @Autowired
     private RoleRepository roleRepository;
 
-    public Page<User> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable);
+    @Autowired
+    private UserMapper userMapper;
+
+    /**
+     * Retrieves all users as DTOs.
+     *
+     * @return list of UserResponseDTO
+     */
+    public List<UserResponseDTO> getAllUsers() {
+        return userRepository.findAll()
+                .stream()
+                .map(userMapper::toResponse)
+                .toList();
     }
 
-    public Optional<User> getUserById(Long id) {
-        return userRepository.findById(id);
+    /**
+     * Retrieves a user by its ID.
+     *
+     * @param id the user ID
+     * @return UserResponseDTO
+     */
+    public UserResponseDTO getUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+
+        return userMapper.toResponse(user);
     }
 
-    public Optional<User> getUserByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
-    /** Para autenticación: trae User + Role en una sola consulta */
-    public Optional<User> getUserByEmailWithRole(String email) {
-        return userRepository.findByEmailWithRole(email);
-    }
-
-    /** CREATE: crea usuario con rol por nombre (ADMIN/TEACHER/STUDENT) */
+    /**
+     * Creates a new user with a given role.
+     *
+     * @param dto data required to create the user
+     * @return created user as UserResponseDTO
+     */
     @Transactional
-    public User createUser(User user, String roleName) {
+    public UserResponseDTO createUser(CreateUserDTO dto) {
 
-        // Email duplicado → excepción personalizada
-        if (userRepository.existsByEmail(user.getEmail())) {
-            throw new EmailAlreadyExistsException(user.getEmail());
+        // Validar email duplicado
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new EmailAlreadyExistsException(dto.getEmail());
         }
 
-        // Buscar rol por nombre → si no existe, excepción personalizada
+        // Mapear DTO -> entidad User
+        User user = userMapper.toEntity(dto);
+
+        // Resolver rol
+        String roleName = dto.getRole().toUpperCase();
         Role role = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new RoleNotFoundException(roleName));
-
         user.setRole(role);
 
-        if (user.getStatus() == null)
+        // Estado por defecto si no se ha configurado en otro lado
+        if (user.getStatus() == null) {
             user.setStatus(UserStatus.ACTIVE);
+        }
 
-        // TODO: en seguridad, encriptar password con BCrypt
+        // Timestamps básicos (si no usas @PrePersist/@PreUpdate)
+        LocalDateTime now = LocalDateTime.now();
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
 
-        return userRepository.save(user);
+        // TODO: cuando integremos seguridad, encriptar password aquí (BCrypt)
+
+        User saved = userRepository.save(user);
+        return userMapper.toResponse(saved);
     }
 
-    /** UPDATE parcial (email/password/status) */
+    /**
+     * Updates an existing user. Only non-null fields in the DTO will be applied.
+     *
+     * @param id  the ID of the user to update
+     * @param dto the update data
+     * @return updated user as UserResponseDTO
+     */
     @Transactional
-    public Optional<User> updateUser(Long id, User partial) {
-        return userRepository.findById(id).map(db -> {
+    public UserResponseDTO updateUser(Long id, UpdateUserDTO dto) {
 
-            // Validar nuevo email
-            if (partial.getEmail() != null && !partial.getEmail().equals(db.getEmail())) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
 
-                if (userRepository.existsByEmail(partial.getEmail())) {
-                    throw new EmailAlreadyExistsException(partial.getEmail());
-                }
-
-                db.setEmail(partial.getEmail());
+        // Validar cambio de email (si viene y es diferente)
+        if (dto.getEmail() != null && !dto.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(dto.getEmail())) {
+                throw new EmailAlreadyExistsException(dto.getEmail());
             }
+        }
 
-            if (partial.getPassword() != null) {
-                db.setPassword(partial.getPassword()); // TODO: codificar
-            }
+        // Aplicar actualización parcial con MapStruct
+        userMapper.updateEntityFromDto(dto, user);
 
-            if (partial.getStatus() != null) {
-                db.setStatus(partial.getStatus());
-            }
-
-            return db; // entidad managed
-        });
-    }
-
-    /** Cambiar estado de la cuenta */
-    @Transactional
-    public Optional<User> changeStatus(Long id, UserStatus status) {
-        return userRepository.findById(id).map(db -> {
-            db.setStatus(status);
-            return db;
-        });
-    }
-
-    /** Reasignar rol por nombre */
-    @Transactional
-    public Optional<User> assignRole(Long userId, String roleName) {
-        return userRepository.findById(userId).map(db -> {
+        // Si viene un rol nuevo en el DTO, se actualiza
+        if (dto.getRole() != null) {
+            String roleName = dto.getRole().toUpperCase();
             Role role = roleRepository.findByName(roleName)
                     .orElseThrow(() -> new RoleNotFoundException(roleName));
-            db.setRole(role);
-            return db;
-        });
+            user.setRole(role);
+        }
+
+        // Actualizar timestamp
+        user.setUpdatedAt(LocalDateTime.now());
+
+        User updated = userRepository.save(user);
+        return userMapper.toResponse(updated);
     }
 
-    /** DELETE */
+    /**
+     * Deletes a user by its ID.
+     *
+     * @param id the user ID
+     */
     @Transactional
-    public boolean deleteUser(Long id) {
-        if (!userRepository.existsById(id))
-            return false;
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new UserNotFoundException(id);
+        }
         userRepository.deleteById(id);
-        return true;
     }
 }
