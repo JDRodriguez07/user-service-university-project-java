@@ -3,6 +3,7 @@ package edu.university.user_service.dto;
 import edu.university.user_service.enums.StudentStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -16,19 +17,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateStudentDTO {
-
-    @NotBlank(message = "DNI is required.")
-    private String dni;
-
-    @NotBlank(message = "Name is required.")
-    private String name;
-
-    @NotBlank(message = "Last name is required.")
-    private String lastName;
-
-    private String phoneNumber;
-    private String address;
+public class CreateStudentDTO extends PersonBaseDTO {
 
     @NotBlank(message = "Email is required.")
     @Email(message = "Invalid email format.")
@@ -42,6 +31,7 @@ public class CreateStudentDTO {
     private String career;
 
     private LocalDate admissionDate;
+    private LocalDate graduationDate;
     private BigDecimal gpa;
     private StudentStatus studentStatus;
 }

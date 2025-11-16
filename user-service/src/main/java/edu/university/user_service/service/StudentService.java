@@ -3,7 +3,6 @@ package edu.university.user_service.service;
 import edu.university.user_service.dto.CreateStudentDTO;
 import edu.university.user_service.dto.StudentResponseDTO;
 import edu.university.user_service.dto.UpdateStudentDTO;
-import edu.university.user_service.enums.StudentStatus;
 import edu.university.user_service.enums.UserStatus;
 import edu.university.user_service.exceptions.*;
 import edu.university.user_service.mapper.StudentMapper;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -61,24 +59,12 @@ public class StudentService {
                 .orElseThrow(() -> new RoleNotFoundException("STUDENT"));
         student.setRole(role);
 
-        if (student.getStatus() == null) {
-            student.setStatus(UserStatus.ACTIVE);
-        }
-
-        if (student.getStudentStatus() == null) {
-            student.setStudentStatus(StudentStatus.ENROLLED);
-        }
-
         if (student.getAdmissionDate() == null) {
             student.setAdmissionDate(LocalDate.now());
         }
 
-        String studentCode = generateCodeFromDni("S", student.getDni());
+        String studentCode = generateCodeFromDni("STU", student.getDni());
         student.setStudentCode(studentCode);
-
-        LocalDateTime now = LocalDateTime.now();
-        student.setCreatedAt(now);
-        student.setUpdatedAt(now);
 
         Student saved = studentRepository.save(student);
         return studentMapper.toResponse(saved);
@@ -96,16 +82,8 @@ public class StudentService {
             }
         }
 
+        // Actualización parcial de todos los campos (incluidos status y studentStatus)
         studentMapper.updateEntityFromDto(dto, student);
-
-        if (dto.getStatus() != null) {
-            student.setStatus(dto.getStatus());
-        }
-        if (dto.getStudentStatus() != null) {
-            student.setStudentStatus(dto.getStudentStatus());
-        }
-
-        student.setUpdatedAt(LocalDateTime.now());
 
         Student updated = studentRepository.save(student);
         return studentMapper.toResponse(updated);
@@ -113,23 +91,29 @@ public class StudentService {
 
     @Transactional
     public void deleteStudent(Long id) {
-        if (!studentRepository.existsById(id)) {
-            throw new StudentNotFoundException(id);
-        }
-        studentRepository.deleteById(id);
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new StudentNotFoundException(id));
+
+        student.setStatus(UserStatus.DELETED); // o INACTIVE
     }
 
     private String generateCodeFromDni(String prefix, String dni) {
         if (dni == null || dni.isBlank()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
+
+        // Mantener solo números
         String cleaned = dni.replaceAll("\\D", "");
         if (cleaned.isEmpty()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
-        String lastDigits = cleaned.length() <= 6
-                ? cleaned
+
+        // Tomar los últimos 6 dígitos (padded si vienen menos de 6)
+        String lastDigits = cleaned.length() < 6
+                ? String.format("%06d", Integer.parseInt(cleaned)) // agrega ceros a la izquierda
                 : cleaned.substring(cleaned.length() - 6);
+
         return prefix + lastDigits;
     }
+
 }

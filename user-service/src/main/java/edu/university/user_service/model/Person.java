@@ -2,8 +2,11 @@ package edu.university.user_service.model;
 
 import java.time.LocalDate;
 
+import edu.university.user_service.enums.DocumentType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,8 +21,8 @@ import lombok.Setter;
 @Table(name = "persons")
 public class Person extends User {
 
-    @Column(name = "document_type", nullable = false, length = 20)
-    private String documentType;
+    @Enumerated(EnumType.STRING)
+    private DocumentType documentType;
 
     @Column(name = "dni", nullable = false, length = 20)
     private String dni;

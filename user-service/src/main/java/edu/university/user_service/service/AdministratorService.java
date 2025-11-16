@@ -62,17 +62,9 @@ public class AdministratorService {
                 .orElseThrow(() -> new RoleNotFoundException("ADMIN"));
         admin.setRole(role);
 
-        if (admin.getStatus() == null) {
-            admin.setStatus(UserStatus.ACTIVE);
-        }
-
         // Código: A + últimos 6 dígitos del DNI
-        String adminCode = generateCodeFromDni("A", admin.getDni());
+        String adminCode = generateCodeFromDni("ADM", admin.getDni());
         admin.setAdminCode(adminCode);
-
-        LocalDateTime now = LocalDateTime.now();
-        admin.setCreatedAt(now);
-        admin.setUpdatedAt(now);
 
         Administrator saved = administratorRepository.save(admin);
         return administratorMapper.toResponse(saved);
@@ -92,12 +84,6 @@ public class AdministratorService {
 
         administratorMapper.updateEntityFromDto(dto, admin);
 
-        if (dto.getStatus() != null) {
-            admin.setStatus(dto.getStatus());
-        }
-
-        admin.setUpdatedAt(LocalDateTime.now());
-
         Administrator updated = administratorRepository.save(admin);
         return administratorMapper.toResponse(updated);
     }
@@ -110,19 +96,23 @@ public class AdministratorService {
         administratorRepository.deleteById(id);
     }
 
-    // ===== HELPER =====
     private String generateCodeFromDni(String prefix, String dni) {
         if (dni == null || dni.isBlank()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
+
+        // Mantener solo números
         String cleaned = dni.replaceAll("\\D", "");
         if (cleaned.isEmpty()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
-        String lastDigits = cleaned.length() <= 6
-                ? cleaned
+
+        // Tomar los últimos 6 dígitos, padded si son menos
+        String lastDigits = cleaned.length() < 6
+                ? String.format("%06d", Integer.parseInt(cleaned))
                 : cleaned.substring(cleaned.length() - 6);
 
         return prefix + lastDigits;
     }
+
 }
