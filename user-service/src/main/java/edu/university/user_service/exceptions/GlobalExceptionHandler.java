@@ -71,13 +71,6 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<?> handleUserNotFound(UserNotFoundException ex) {
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
-    }
-
     // =========================
     // 400 - BAD REQUEST
     // =========================

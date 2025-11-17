@@ -19,18 +19,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         @Override
         public UserDetails loadUserByUsername(String email) {
+
                 User user = userRepository.findByEmail(email)
                                 .orElseThrow(() -> new UserNotFoundException(
                                                 "Usuario no encontrado con email: " + email));
 
-                String roleName = user.getRole().getName();
+                String springRole = "ROLE_" + user.getRole().getName().toUpperCase();
 
-                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleName));
+                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(springRole));
 
                 return new org.springframework.security.core.userdetails.User(
                                 user.getEmail(),
                                 user.getPassword(),
                                 authorities);
         }
-
 }
