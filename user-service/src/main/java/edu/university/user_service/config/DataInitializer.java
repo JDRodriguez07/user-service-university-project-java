@@ -1,14 +1,18 @@
 package edu.university.user_service.config;
 
+import edu.university.user_service.enums.DocumentType;
 import edu.university.user_service.enums.UserStatus;
+import edu.university.user_service.model.Administrator;
 import edu.university.user_service.model.Role;
-import edu.university.user_service.model.User;
+import edu.university.user_service.repository.AdministratorRepository;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -18,6 +22,9 @@ public class DataInitializer implements CommandLineRunner {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AdministratorRepository administratorRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -30,25 +37,48 @@ public class DataInitializer implements CommandLineRunner {
                 .orElseGet(() -> {
                     Role r = new Role();
                     r.setName("ADMIN");
+                    r.setDescription("System administrator role");
                     return roleRepository.save(r);
                 });
 
-        // Crear usuario ADMIN inicial
-        if (!userRepository.existsByEmail("admin@system.com")) {
+        // 2. Crear administrador inicial por defecto si no existe
 
-            User admin = new User();
-            admin.setEmail("admin@system.com");
-            admin.setPassword(passwordEncoder.encode("admin123"));
-            admin.setRole(adminRole);
+        String adminEmail = "admin@system.com";
+
+        // Verificamos en la tabla users para no duplicar email
+        if (!userRepository.existsByEmail(adminEmail)) {
+
+            Administrator admin = new Administrator();
+
+            // --------- Campos heredados de User ---------
+            admin.setEmail(adminEmail);
+            admin.setPassword(passwordEncoder.encode("Admin123"));
             admin.setStatus(UserStatus.ACTIVE);
+            admin.setRole(adminRole);
 
-            userRepository.save(admin);
+            // --------- Campos heredados de Person ---------
+            admin.setDocumentType(DocumentType.CC); // CC / TI / CE / PAS
+            admin.setDni("9999999999"); // algo fijo para el sistema
+            admin.setName("SYSTEM");
+            admin.setLastName("ADMIN");
+            admin.setGender("N/A"); // o "OTRO"
+            admin.setBirthDate(LocalDate.of(2000, 1, 1)); // fecha dummy
+            admin.setPhoneNumber("0000000000");
+            admin.setAddress("SYSTEM INTERNAL ADDRESS");
 
-            System.out.println("\n==============================");
-            System.out.println(" ADMIN USER CREATED:");
-            System.out.println(" email: admin@system.com");
-            System.out.println(" password: admin123");
-            System.out.println("==============================\n");
+            // --------- Campos propios de Administrator ---------
+            admin.setAdminCode("ADM000000"); // código fijo para el admin del sistema
+            admin.setDepartment("SYSTEM");
+            admin.setPosition("SUPER_ADMIN");
+
+            administratorRepository.save(admin);
+
+            System.out.println("\n========================================");
+            System.out.println(" DEFAULT SYSTEM ADMINISTRATOR CREATED");
+            System.out.println("  EMAIL   : " + adminEmail);
+            System.out.println("  PASSWORD: admin123");
+            System.out.println("  ROLE    : ADMIN (Administrator entity)");
+            System.out.println("========================================\n");
         }
     }
 }
