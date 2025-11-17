@@ -6,13 +6,10 @@ import edu.university.user_service.model.Administrator;
 import edu.university.user_service.model.Role;
 import edu.university.user_service.repository.AdministratorRepository;
 import edu.university.user_service.repository.RoleRepository;
-import edu.university.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDate;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -21,10 +18,7 @@ public class DataInitializer implements CommandLineRunner {
     private RoleRepository roleRepository;
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private AdministratorRepository administratorRepository;
+    private AdministratorRepository adminRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -32,53 +26,71 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        // Crear rol ADMIN si no existe
+        // ==========================================================
+        // 1. Crear roles si no existen
+        // ==========================================================
+
+        // ADMIN
         Role adminRole = roleRepository.findByName("ADMIN")
                 .orElseGet(() -> {
                     Role r = new Role();
                     r.setName("ADMIN");
-                    r.setDescription("System administrator role");
+                    r.setDescription("Administrator role");
                     return roleRepository.save(r);
                 });
 
-        // 2. Crear administrador inicial por defecto si no existe
+        // TEACHER
+        Role teacherRole = roleRepository.findByName("TEACHER")
+                .orElseGet(() -> {
+                    Role r = new Role();
+                    r.setName("TEACHER");
+                    r.setDescription("Teacher role");
+                    return roleRepository.save(r);
+                });
 
-        String adminEmail = "admin@system.com";
+        // STUDENT
+        Role studentRole = roleRepository.findByName("STUDENT")
+                .orElseGet(() -> {
+                    Role r = new Role();
+                    r.setName("STUDENT");
+                    r.setDescription("Student role");
+                    return roleRepository.save(r);
+                });
 
-        // Verificamos en la tabla users para no duplicar email
-        if (!userRepository.existsByEmail(adminEmail)) {
+        // ==========================================================
+        // 2. Crear admin por defecto si no existe
+        // ==========================================================
+
+        if (!adminRepository.existsByEmail("admin@system.com")) {
 
             Administrator admin = new Administrator();
-
-            // --------- Campos heredados de User ---------
-            admin.setEmail(adminEmail);
-            admin.setPassword(passwordEncoder.encode("Admin123"));
-            admin.setStatus(UserStatus.ACTIVE);
+            admin.setEmail("admin@system.com");
+            admin.setPassword(passwordEncoder.encode("admin123"));
             admin.setRole(adminRole);
+            admin.setStatus(UserStatus.ACTIVE);
 
-            // --------- Campos heredados de Person ---------
-            admin.setDocumentType(DocumentType.CC); // CC / TI / CE / PAS
-            admin.setDni("9999999999"); // algo fijo para el sistema
+            // Datos heredados de PERSON
+            admin.setDocumentType(DocumentType.CC);
+            admin.setDni("0000000000");
             admin.setName("SYSTEM");
             admin.setLastName("ADMIN");
-            admin.setGender("N/A"); // o "OTRO"
-            admin.setBirthDate(LocalDate.of(2000, 1, 1)); // fecha dummy
+            admin.setGender("N/A");
+            admin.setBirthDate(null);
             admin.setPhoneNumber("0000000000");
-            admin.setAddress("SYSTEM INTERNAL ADDRESS");
+            admin.setAddress("SYSTEM_ADDRESS");
 
-            // --------- Campos propios de Administrator ---------
-            admin.setAdminCode("ADM000000"); // código fijo para el admin del sistema
+            // Datos propios de ADMIN
+            admin.setAdminCode("ADM-SYSTEM");
             admin.setDepartment("SYSTEM");
-            admin.setPosition("SUPER_ADMIN");
+            admin.setPosition("SYSTEM ADMINISTRATOR");
 
-            administratorRepository.save(admin);
+            adminRepository.save(admin);
 
-            System.out.println("\n========================================");
-            System.out.println(" DEFAULT SYSTEM ADMINISTRATOR CREATED");
-            System.out.println("  EMAIL   : " + adminEmail);
-            System.out.println("  PASSWORD: admin123");
-            System.out.println("  ROLE    : ADMIN (Administrator entity)");
-            System.out.println("========================================\n");
+            System.out.println("\n==============================");
+            System.out.println(" DEFAULT ADMIN CREATED:");
+            System.out.println(" email: admin@system.com");
+            System.out.println(" password: admin123");
+            System.out.println("==============================\n");
         }
     }
 }
