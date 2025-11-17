@@ -3,6 +3,8 @@ package edu.university.user_service.service;
 import edu.university.user_service.dto.CreateUserDTO;
 import edu.university.user_service.dto.UpdateUserDTO;
 import edu.university.user_service.dto.UserResponseDTO;
+import edu.university.user_service.dto.LoginRequestDTO;
+import edu.university.user_service.dto.LoginResponseDTO;
 import edu.university.user_service.enums.UserStatus;
 import edu.university.user_service.exceptions.EmailAlreadyExistsException;
 import edu.university.user_service.exceptions.RoleNotFoundException;
@@ -12,7 +14,13 @@ import edu.university.user_service.model.Role;
 import edu.university.user_service.model.User;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.UserRepository;
+import edu.university.user_service.security.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +45,18 @@ public class UserService {
 
     @Autowired
     private RoleService roleService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private UserDetailsServiceImpl userDetailsService;
 
     /**
      * Retrieves all users as DTOs.
@@ -80,7 +100,10 @@ public class UserService {
         // Mapear DTO -> entidad User
         User user = userMapper.toEntity(dto);
 
-        Role role = roleService.getOrCreateRole(dto.getRole(), "Generic user role");
+        // Encriptar password
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+
+        Role role = roleService.getOrCreateRole(dto.getRole(), "GENERIC");
         user.setRole(role);
 
         // Estado por defecto si no se ha configurado en otro lado
@@ -88,12 +111,10 @@ public class UserService {
             user.setStatus(UserStatus.ACTIVE);
         }
 
-        // Timestamps básicos (si no usas @PrePersist/@PreUpdate)
+        // Timestamps básicos (si no dependes solo de @PrePersist/@PreUpdate)
         LocalDateTime now = LocalDateTime.now();
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
-
-        // TODO: cuando integremos seguridad, encriptar password aquí (BCrypt)
 
         User saved = userRepository.save(user);
         return userMapper.toResponse(saved);
@@ -130,6 +151,11 @@ public class UserService {
             user.setRole(role);
         }
 
+        // Opcional: si permites cambiar password desde UpdateUserDTO
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
         // Actualizar timestamp
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -138,7 +164,7 @@ public class UserService {
     }
 
     /**
-     * Deletes a user by its ID.
+     * Soft delete a user by its ID (status = DELETED).
      *
      * @param id the user ID
      */
@@ -148,5 +174,33 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException(id));
 
         user.setStatus(UserStatus.DELETED);
+    }
+
+    /**
+     * Authenticates a user with email and password and returns a JWT token.
+     *
+     * @param loginRequest login credentials (email, password)
+     * @return LoginResponseDTO containing the JWT token
+     * @throws AuthenticationException if credentials are invalid
+     */
+    public LoginResponseDTO login(LoginRequestDTO loginRequest) throws AuthenticationException {
+
+        // 1. Spring Security valida email y contraseña
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginRequest.getEmail(),
+                        loginRequest.getPassword()
+                )
+        );
+
+        // 2. Si la autenticación es exitosa, cargamos UserDetails
+        UserDetails userDetails =
+                userDetailsService.loadUserByUsername(loginRequest.getEmail());
+
+        // 3. Generamos el token
+        String token = jwtService.generateToken(userDetails);
+
+        // 4. Devolvemos el DTO de respuesta
+        return new LoginResponseDTO(token);
     }
 }

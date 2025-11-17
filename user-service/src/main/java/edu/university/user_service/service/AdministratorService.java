@@ -13,6 +13,7 @@ import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,13 +35,13 @@ public class AdministratorService {
     private UserRepository userRepository;
 
     @Autowired
+    private PersonRepository personRepository;
+
+    @Autowired
     private AdministratorMapper administratorMapper;
 
     @Autowired
-    private RoleService roleService;
-
-    @Autowired
-    private PersonRepository personRepository;
+    private PasswordEncoder passwordEncoder;
 
     public List<AdministratorResponseDTO> getAllAdministrators() {
         return administratorRepository.findAll()
@@ -58,20 +59,29 @@ public class AdministratorService {
     @Transactional
     public AdministratorResponseDTO createAdministrator(CreateAdministratorDTO dto) {
 
+        // Validar email duplicado
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new EmailAlreadyExistsException(dto.getEmail());
         }
 
+        // Validar combinación documentType + dni
         if (personRepository.existsByDocumentTypeAndDni(dto.getDocumentType(), dto.getDni())) {
-            throw new PersonAlreadyExistsException(dto.getDocumentType().name(), dto.getDni());
+            throw new DocumentTypeAndDniAlreadyExistsException();
         }
 
         Administrator admin = administratorMapper.toEntity(dto);
 
-        Role role = roleService.getOrCreateRole("ADMIN", "Administrator role");
+        // Encriptar password
+        admin.setPassword(passwordEncoder.encode(dto.getPassword()));
+
+        Role role = roleRepository.findByName("ADMIN")
+                .orElseThrow(() -> new RoleNotFoundException("ADMIN"));
         admin.setRole(role);
 
-        // Código: A + últimos 6 dígitos del DNI
+        if (admin.getStatus() == null) {
+            admin.setStatus(UserStatus.ACTIVE);
+        }
+
         String adminCode = generateCodeFromDni("ADM", admin.getDni());
         admin.setAdminCode(adminCode);
 
@@ -93,16 +103,21 @@ public class AdministratorService {
 
         administratorMapper.updateEntityFromDto(dto, admin);
 
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            admin.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
         Administrator updated = administratorRepository.save(admin);
         return administratorMapper.toResponse(updated);
     }
 
     @Transactional
     public void deleteAdministrator(Long id) {
-        if (!administratorRepository.existsById(id)) {
-            throw new AdministratorNotFoundException(id);
-        }
-        administratorRepository.deleteById(id);
+        Administrator admin = administratorRepository.findById(id)
+                .orElseThrow(() -> new AdministratorNotFoundException(id));
+
+        // Soft delete
+        admin.setStatus(UserStatus.DELETED);
     }
 
     private String generateCodeFromDni(String prefix, String dni) {
@@ -110,18 +125,15 @@ public class AdministratorService {
             throw new InvalidDniForCodeGenerationException(dni);
         }
 
-        // Mantener solo números
         String cleaned = dni.replaceAll("\\D", "");
         if (cleaned.isEmpty()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
 
-        // Tomar los últimos 6 dígitos, padded si son menos
         String lastDigits = cleaned.length() < 6
                 ? String.format("%06d", Integer.parseInt(cleaned))
                 : cleaned.substring(cleaned.length() - 6);
 
         return prefix + lastDigits;
     }
-
 }

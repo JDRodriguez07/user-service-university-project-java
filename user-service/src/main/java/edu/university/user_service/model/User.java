@@ -4,6 +4,8 @@ import edu.university.user_service.enums.UserStatus;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -21,6 +23,7 @@ public class User {
     private String email;
 
     @Column(name = "password", nullable = false)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Enumerated(EnumType.STRING)
