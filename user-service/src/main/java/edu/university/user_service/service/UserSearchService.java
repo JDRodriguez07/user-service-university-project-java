@@ -14,7 +14,6 @@ import edu.university.user_service.repository.AdministratorRepository;
 import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.StudentRepository;
 import edu.university.user_service.repository.TeacherRepository;
-import edu.university.user_service.repository.UserRepository;
 
 @Service
 public class UserSearchService {
