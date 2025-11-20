@@ -14,7 +14,7 @@ services:
     networks:
       - red_microservicios
     healthcheck:
-      test: [ "CMD", "mysql", "-u", "root", "-pUserServiceRoot123*" ]
+      test: [ "CMD", "mysql", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -45,9 +45,9 @@ services:
       # OJO: estos son los que lee tu application.properties
       DB_HOST: user_db
       DB_PORT: 3306
-      DB_NAME: user-microservice-db
-      DB_USERNAME: user_service_user
-      DB_PASSWORD: UserService123*
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
 
       # Reutilizamos lo que ya tienes en .env para JWT
       JWT_SECRET: ${JWT_SECRET}
