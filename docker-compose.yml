@@ -1,0 +1,61 @@
+services:
+  # ------------------------- MySQL -------------------------
+  user_db:
+    build:
+      context: ./MySQL # Usa el Dockerfile de la carpeta MySQL
+      dockerfile: Dockerfile
+    container_name: mysql_user_service
+    restart: always
+    ports:
+      - "1121:3306" # host:container
+    volumes:
+      - ./config/mysql:/var/lib/mysql
+    hostname: user_db # nombre dentro de la red Docker
+    networks:
+      - red_microservicios
+    healthcheck:
+      test: [ "CMD", "mysql", "-u", "root", "-pUserServiceRoot123*" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ------------------------- Adminer -----------------------
+  adminer:
+    image: adminer
+    container_name: adminer_user_service
+    restart: always
+    ports:
+      - "1122:8080" # http://localhost:1122
+    networks:
+      - red_microservicios
+
+  # ---------------------- user-service ---------------------
+  user_service:
+    build:
+      context: ./user-service # Usa el Dockerfile del microservicio
+      dockerfile: Dockerfile
+    container_name: backend_user_service
+    restart: always
+    ports:
+      - "1123:8080" # host:container
+    depends_on:
+      user_db:
+        condition: service_healthy
+    environment:
+      # OJO: estos son los que lee tu application.properties
+      DB_HOST: user_db
+      DB_PORT: 3306
+      DB_NAME: user-microservice-db
+      DB_USERNAME: user_service_user
+      DB_PASSWORD: UserService123*
+
+      # Reutilizamos lo que ya tienes en .env para JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
+    networks:
+      - red_microservicios
+
+# Red compartida entre microservicios
+networks:
+  red_microservicios:
+    driver: bridge
