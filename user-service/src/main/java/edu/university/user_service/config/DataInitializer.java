@@ -7,6 +7,7 @@ import edu.university.user_service.model.Role;
 import edu.university.user_service.repository.AdministratorRepository;
 import edu.university.user_service.repository.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,15 @@ public class DataInitializer implements CommandLineRunner {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Value("${bootstrap.admin.enabled:false}")
+    private boolean bootstrapAdminEnabled;
+
+    @Value("${bootstrap.admin.email}")
+    private String bootstrapAdminEmail;
+
+    @Value("${bootstrap.admin.password}")
+    private String bootstrapAdminPassword;
 
     @Override
     public void run(String... args) throws Exception {
@@ -61,11 +71,17 @@ public class DataInitializer implements CommandLineRunner {
         // 2. Crear admin por defecto si no existe
         // ==========================================================
 
-        if (!adminRepository.existsByEmail("admin@system.com")) {
+        if (!bootstrapAdminEnabled) {
+            return;
+        }
+
+        validateBootstrapAdminConfiguration();
+
+        if (!adminRepository.existsByEmail(bootstrapAdminEmail)) {
 
             Administrator admin = new Administrator();
-            admin.setEmail("admin@system.com");
-            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setEmail(bootstrapAdminEmail);
+            admin.setPassword(passwordEncoder.encode(bootstrapAdminPassword));
             admin.setRole(adminRole);
             admin.setStatus(UserStatus.ACTIVE);
 
@@ -86,11 +102,19 @@ public class DataInitializer implements CommandLineRunner {
 
             adminRepository.save(admin);
 
-            System.out.println("\n==============================");
-            System.out.println(" DEFAULT ADMIN CREATED:");
-            System.out.println(" email: admin@system.com");
-            System.out.println(" password: admin123");
-            System.out.println("==============================\n");
+            System.out.println("Default bootstrap administrator created.");
+        }
+    }
+
+    private void validateBootstrapAdminConfiguration() {
+        if (bootstrapAdminEmail == null || bootstrapAdminEmail.isBlank()) {
+            throw new IllegalStateException(
+                    "BOOTSTRAP_ADMIN_EMAIL is required when BOOTSTRAP_ADMIN_ENABLED=true");
+        }
+
+        if (bootstrapAdminPassword == null || bootstrapAdminPassword.length() < 12) {
+            throw new IllegalStateException(
+                    "BOOTSTRAP_ADMIN_PASSWORD must contain at least 12 characters when bootstrap is enabled");
         }
     }
 }
