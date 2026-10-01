@@ -65,7 +65,6 @@ services:
     networks:
       - red_microservicios
 
-# Red compartida entre microservicios
 networks:
   red_microservicios:
-    driver: bridge
+    external: true
