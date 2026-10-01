@@ -1,0 +1,43 @@
+# ============================
+# ENVIRONMENT VARIABLES
+# ============================
+.env
+
+# Never commit database files
+config/mysql/
+
+# ============================
+# MAVEN BUILD FILES
+# ============================
+**/target/
+
+# ============================
+# IDE FILES
+# ============================
+# IntelliJ
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ============================
+# SYSTEM FILES
+# ============================
+.DS_Store
+Thumbs.db
+
+# ============================
+# LOGS
+# ============================
+*.log
+
+# ============================
+# NODE (if ever used in the future)
+# ============================
+node_modules/
