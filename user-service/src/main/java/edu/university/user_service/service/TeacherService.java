@@ -32,6 +32,9 @@ public class TeacherService {
     @Autowired
     private TeacherMapper teacherMapper;
 
+    @Autowired
+    private RoleService roleService;
+
     public List<TeacherResponseDTO> getAllTeachers() {
         return teacherRepository.findAll()
                 .stream()
@@ -57,8 +60,7 @@ public class TeacherService {
         Teacher teacher = teacherMapper.toEntity(dto);
 
         // 3. Asignar rol TEACHER
-        Role role = roleRepository.findByName("TEACHER")
-                .orElseThrow(() -> new RoleNotFoundException("TEACHER"));
+        Role role = roleService.getOrCreateRole("TEACHER", "Teacher role");
         teacher.setRole(role);
 
         // 4. Generar código de profesor: TEA + últimos 6 dígitos del DNI

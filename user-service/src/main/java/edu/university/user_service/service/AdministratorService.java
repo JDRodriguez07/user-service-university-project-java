@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -35,6 +34,9 @@ public class AdministratorService {
 
     @Autowired
     private AdministratorMapper administratorMapper;
+
+    @Autowired
+    private RoleService roleService;
 
     public List<AdministratorResponseDTO> getAllAdministrators() {
         return administratorRepository.findAll()
@@ -58,8 +60,7 @@ public class AdministratorService {
 
         Administrator admin = administratorMapper.toEntity(dto);
 
-        Role role = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new RoleNotFoundException("ADMIN"));
+        Role role = roleService.getOrCreateRole("ADMIN", "Administrator role");
         admin.setRole(role);
 
         // Código: A + últimos 6 dígitos del DNI

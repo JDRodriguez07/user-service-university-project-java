@@ -33,6 +33,9 @@ public class StudentService {
     @Autowired
     private StudentMapper studentMapper;
 
+    @Autowired
+    private RoleService roleService;
+
     public List<StudentResponseDTO> getAllStudents() {
         return studentRepository.findAll()
                 .stream()
@@ -55,8 +58,7 @@ public class StudentService {
 
         Student student = studentMapper.toEntity(dto);
 
-        Role role = roleRepository.findByName("STUDENT")
-                .orElseThrow(() -> new RoleNotFoundException("STUDENT"));
+        Role role = roleService.getOrCreateRole("STUDENT", "Student role");
         student.setRole(role);
 
         if (student.getAdmissionDate() == null) {

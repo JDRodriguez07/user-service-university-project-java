@@ -35,6 +35,9 @@ public class UserService {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private RoleService roleService;
+
     /**
      * Retrieves all users as DTOs.
      *
@@ -77,10 +80,7 @@ public class UserService {
         // Mapear DTO -> entidad User
         User user = userMapper.toEntity(dto);
 
-        // Resolver rol
-        String roleName = dto.getRole().toUpperCase();
-        Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new RoleNotFoundException(roleName));
+        Role role = roleService.getOrCreateRole(dto.getRole(), "Generic user role");
         user.setRole(role);
 
         // Estado por defecto si no se ha configurado en otro lado
