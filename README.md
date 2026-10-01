@@ -165,9 +165,19 @@ DB_USERNAME=user_service_user
 DB_PASSWORD=CHANGE_ME
 JWT_SECRET=CHANGE_ME
 JWT_EXPIRATION_MS=86400000
+
+# Optional bootstrap administrator (disabled by default)
+BOOTSTRAP_ADMIN_ENABLED=false
+BOOTSTRAP_ADMIN_EMAIL=
+BOOTSTRAP_ADMIN_PASSWORD=
 ```
 
 The **actual `.env` file is never committed**.
+
+To create the initial administrator automatically, set
+`BOOTSTRAP_ADMIN_ENABLED=true` and provide its email and a password of at least
+12 characters. The account is not created by default, and its password is never
+written to application logs.
 
 ---
 
@@ -198,4 +208,3 @@ This service provides user management for the university microservices system, i
 - Deployment with Docker  
 
 This project is ready for academic submission or extension into a full multi-service architecture.
-
