@@ -1,210 +1,160 @@
-# University Project – User Service (Spring Boot + Docker + MySQL)
+# User Service — University Management System
 
-This repository contains the **User Service** module for a university microservices project.  
-It includes:
+REST microservice for user identity and access management in an academic university platform. I developed this service from scratch as my responsibility within a team project built with a microservices architecture.
 
-- Spring Boot 3  
-- Java 17  
-- MySQL 8  
-- Docker & Docker Compose  
-- JWT authentication  
-- Adminer (database viewer)  
-- Environment variable configuration  
-- Clean Git structure with `.env`, `.env.example`, `.gitignore`
+The service manages administrators, teachers, and students; authenticates users with JSON Web Tokens (JWT); and applies role-based authorization to protected operations. It was integrated with the project's API Gateway and the other domain services during the final delivery.
 
----
+## Main capabilities
 
-## 🚀 How to Run the Project (Using Docker)
+- User registration and authentication with JWT.
+- Password hashing with Spring Security.
+- Role-based access control for `ADMIN`, `TEACHER`, and `STUDENT` users.
+- CRUD operations for administrators, teachers, students, and general users.
+- Authenticated profile updates.
+- User search and account-status management.
+- OpenAPI documentation and interactive testing with Swagger UI.
+- MySQL persistence and containerized local deployment.
+- Optional, secure bootstrap administrator controlled through environment variables.
 
-### 1️⃣ **Clone the repository**
-```bash
-git clone <YOUR_REPO_URL>
-cd university-project
+## Architecture
+
+```text
+Client / API Gateway
+        |
+        v
+User Service (Spring Boot + Spring Security)
+        |
+        v
+      MySQL
 ```
 
----
+The repository includes a standalone Docker Compose environment with the API, MySQL, and Adminer. In the complete academic system, the API was accessed through the shared Gateway.
 
-### 2️⃣ **Create your local `.env` file**
+## API overview
 
-Copy the example file:
+| Resource | Base path | Main operations |
+|---|---|---|
+| Authentication | `/auth` | Login and JWT generation |
+| Users | `/users` | CRUD and authenticated profile update |
+| User search | `/users/search` | Search users |
+| Students | `/students` | CRUD |
+| Teachers | `/teachers` | CRUD |
+| Administrators | `/administrators` | CRUD |
+
+Swagger UI provides the complete request and response schemas once the service is running.
+
+## Technology stack
+
+- Java 17
+- Spring Boot 3.5
+- Spring Web, Spring Data JPA, Spring Security, and Bean Validation
+- JWT (`jjwt`)
+- MySQL 8
+- OpenAPI / Swagger UI
+- MapStruct and Lombok
+- Docker and Docker Compose
+- Maven
+
+## Run with Docker
+
+### Prerequisites
+
+- Git
+- Docker Engine with Docker Compose
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/JDRodriguez07/user-service-university-project-java.git
+cd user-service-university-project-java
+```
+
+### 2. Create the local environment file
 
 ```bash
 cp .env.example .env
 ```
 
-Then open `.env` and replace the placeholder values:
+Replace every placeholder in `.env`. Generate a suitable JWT secret, for example:
 
-- `MYSQL_ROOT_PASSWORD`
-- `DB_PASSWORD`
-- `JWT_SECRET`
+```bash
+openssl rand -base64 32
+```
 
-This file **must NOT be committed** (it's ignored by `.gitignore`).
+The `.env` file is ignored by Git and must never be committed.
 
----
+### 3. Create the shared network
 
-### 3️⃣ **Start all services with Docker**
+The network only needs to be created once and allows this service to communicate with the Gateway and other microservices:
+
+```bash
+docker network create red_microservicios
+```
+
+If it already exists, Docker will report that fact and you can continue.
+
+### 4. Start the services
 
 ```bash
 docker compose up -d --build
 ```
 
-This will start:
+| Service | Local URL / port |
+|---|---|
+| User Service API | `http://localhost:1123` |
+| Swagger UI | `http://localhost:1123/swagger-ui/index.html` |
+| Adminer | `http://localhost:1122` |
+| MySQL | `localhost:1121` |
 
-| Service          | Port | Description |
-|------------------|------|-------------|
-| MySQL            | 1121 | Database    |
-| Adminer          | 1122 | DB UI       |
-| User Service API | 1123 | Spring Boot |
-
----
-
-### 4️⃣ **Verify that the containers are running**
+To stop the environment:
 
 ```bash
-docker ps
+docker compose down
 ```
 
-You should see:
+## Authentication
 
-```
-mysql_user_service      Up (healthy)
-adminer_user_service    Up
-backend_user_service    Up
-```
+Authenticate through:
 
-If MySQL becomes `(unhealthy)`, delete local DB volume:
-
-```bash
-docker compose down -v
-docker compose up -d
-```
-
----
-
-## 📘 Access Points
-
-### ✔ Swagger API (User Service)
-```
-http://localhost:1123/swagger-ui/index.html
-```
-
-### ✔ Adminer (Database Viewer)
-```
-http://localhost:1122
-```
-
-**Adminer login:**
-
-- System: MySQL  
-- Server: `user_db`  
-- Username: value of `${DB_USERNAME}`  
-- Password: value of `${DB_PASSWORD}`  
-- Database: `${DB_NAME}`  
-
----
-
-## 🔐 Authentication (JWT)
-
-Users must authenticate through:
-
-```
+```http
 POST /auth/login
 ```
 
-This returns a JWT token.
+Send the returned token on protected requests:
 
-The token is required for:
-
-- Creating users (ADMIN only)
-- Updating profile data (Admins, Students, Teachers)
-- Accessing restricted endpoints
-
-Environment variables controlling JWT:
-
-```env
-JWT_SECRET=your-secret-here
-JWT_EXPIRATION_MS=86400000
+```http
+Authorization: Bearer <token>
 ```
 
----
+Creating, updating, or deleting students, teachers, and administrators requires the `ADMIN` role. Authenticated users can access the operations permitted to their role.
 
-## 🛠 Docker Compose Overview
+## Environment variables
 
-Services:
+| Variable | Purpose |
+|---|---|
+| `MYSQL_ROOT_PASSWORD` | MySQL root password used by the container |
+| `DB_NAME` | Application database name |
+| `DB_USERNAME` | Application database user |
+| `DB_PASSWORD` | Application database password |
+| `JWT_SECRET` | Base64-encoded JWT signing key (at least 256 bits) |
+| `JWT_EXPIRATION_MS` | Token lifetime in milliseconds |
+| `BOOTSTRAP_ADMIN_ENABLED` | Enables optional administrator creation |
+| `BOOTSTRAP_ADMIN_EMAIL` | Optional bootstrap administrator email |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Optional bootstrap administrator password |
 
-- **user_db**: MySQL with volume mounted at `config/mysql/`
-- **adminer**: Web UI to manage MySQL
-- **user_service**: Spring Boot API built using multi-stage Dockerfile
+Bootstrap administrator creation is disabled by default. If enabled, use a password of at least 12 characters and disable the option again after initialization.
 
-A correct healthcheck ensures MySQL is fully ready before Spring Boot starts.
+## Build and verification
 
----
+Compile the service with Maven:
 
-## 🧹 Git Structure & Ignored Files
-
-The project uses a clean `.gitignore` that excludes:
-
-- `.env`
-- `config/mysql/` (MySQL raw data)
-- `user-service/target/`
-- IDE files (`.idea/`, `.vscode/`)
-- Logs (`*.log`)
-
-This prevents sensitive files and large DB binaries from polluting the repository.
-
----
-
-## 📄 Environment Variables
-
-Example values:
-
-```env
-MYSQL_ROOT_PASSWORD=CHANGE_ME
-DB_NAME=user-microservice-db
-DB_USERNAME=user_service_user
-DB_PASSWORD=CHANGE_ME
-JWT_SECRET=CHANGE_ME
-JWT_EXPIRATION_MS=86400000
-
-# Optional bootstrap administrator (disabled by default)
-BOOTSTRAP_ADMIN_ENABLED=false
-BOOTSTRAP_ADMIN_EMAIL=
-BOOTSTRAP_ADMIN_PASSWORD=
+```bash
+cd user-service
+./mvnw clean package -DskipTests
 ```
 
-The **actual `.env` file is never committed**.
+The repository currently includes a Spring application-context smoke test. Functional API behavior can also be inspected through Swagger UI against the Dockerized MySQL environment.
 
-To create the initial administrator automatically, set
-`BOOTSTRAP_ADMIN_ENABLED=true` and provide its email and a password of at least
-12 characters. The account is not created by default, and its password is never
-written to application logs.
+## Project context
 
----
-
-## 📦 Technologies Used
-
-- Java 17  
-- Spring Boot 3.2  
-- Spring Data JPA  
-- MySQL 8  
-- Docker & Docker Compose  
-- Adminer  
-- Lombok  
-- MapStruct  
-- Spring Security + JWT  
-
----
-
-## ✨ Summary
-
-This service provides user management for the university microservices system, including:
-
-- Authentication  
-- Authorization  
-- CRUD for Admin, Student, and Teacher  
-- Role-based permissions  
-- Profile updates  
-- Persistence via MySQL  
-- Deployment with Docker  
-
-This project is ready for academic submission or extension into a full multi-service architecture.
+This repository represents the User Service I owned in a collaborative university project. Other team members developed the remaining microservices, which were connected through an API Gateway and a shared Docker network for the final integration.
