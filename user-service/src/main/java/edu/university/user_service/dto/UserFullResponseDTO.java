@@ -3,9 +3,12 @@ package edu.university.user_service.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.Builder;
 import lombok.Data;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 @Builder
 public class UserFullResponseDTO {
@@ -15,7 +18,7 @@ public class UserFullResponseDTO {
     // User
     private String email;
     private String status;
-    private String role; // <--- AQUÍ YA ESTABA
+    private String role;
 
     // Person
     private String documentType;
@@ -46,4 +49,5 @@ public class UserFullResponseDTO {
     private BigDecimal gpa;
     private String career;
     private String studentStatus;
+    
 }
