@@ -13,6 +13,7 @@ import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.TeacherRepository;
 import edu.university.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,16 +26,19 @@ public class TeacherService {
     private TeacherRepository teacherRepository;
 
     @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PersonRepository personRepository;
 
     @Autowired
     private TeacherMapper teacherMapper;
 
     @Autowired
-    private RoleService roleService;
-
-    @Autowired
-    private PersonRepository personRepository;
+    private PasswordEncoder passwordEncoder;
 
     public List<TeacherResponseDTO> getAllTeachers() {
         return teacherRepository.findAll()
@@ -52,28 +56,31 @@ public class TeacherService {
     @Transactional
     public TeacherResponseDTO createTeacher(CreateTeacherDTO dto) {
 
-        // 1. Validar email único
+        // Validar email duplicado
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new EmailAlreadyExistsException(dto.getEmail());
         }
 
-        // 1. Validar DNI único
+        // Validar combinación documentType + dni
         if (personRepository.existsByDocumentTypeAndDni(dto.getDocumentType(), dto.getDni())) {
-            throw new PersonAlreadyExistsException(dto.getDocumentType().name(), dto.getDni());
+            throw new DocumentTypeAndDniAlreadyExistsException();
         }
 
-        // 2. Mapear DTO -> Entity
         Teacher teacher = teacherMapper.toEntity(dto);
 
-        // 3. Asignar rol TEACHER
-        Role role = roleService.getOrCreateRole("TEACHER", "Teacher role");
+        // Encriptar password
+        teacher.setPassword(passwordEncoder.encode(dto.getPassword()));
+
+        Role role = roleRepository.findByName("TEACHER")
+                .orElseThrow(() -> new RoleNotFoundException("TEACHER"));
         teacher.setRole(role);
 
-        // 4. Generar código de profesor: TEA + últimos 6 dígitos del DNI
+        if (teacher.getStatus() == null) {
+            teacher.setStatus(UserStatus.ACTIVE);
+        }
+
         String teacherCode = generateCodeFromDni("TEA", teacher.getDni());
         teacher.setTeacherCode(teacherCode);
-
-        // createdAt, updatedAt y status los maneja User con @PrePersist
 
         Teacher saved = teacherRepository.save(teacher);
         return teacherMapper.toResponse(saved);
@@ -85,17 +92,17 @@ public class TeacherService {
         Teacher teacher = teacherRepository.findById(id)
                 .orElseThrow(() -> new TeacherNotFoundException(id));
 
-        // Si cambia el email, validar que no exista en otro usuario
         if (dto.getEmail() != null && !dto.getEmail().equals(teacher.getEmail())) {
             if (userRepository.existsByEmail(dto.getEmail())) {
                 throw new EmailAlreadyExistsException(dto.getEmail());
             }
         }
 
-        // Actualización parcial: solo campos no-null del DTO
         teacherMapper.updateEntityFromDto(dto, teacher);
-        // status también lo actualiza el mapper si viene en el DTO
-        // updatedAt lo actualiza User con @PreUpdate
+
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            teacher.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
 
         Teacher updated = teacherRepository.save(teacher);
         return teacherMapper.toResponse(updated);
@@ -106,6 +113,7 @@ public class TeacherService {
         Teacher teacher = teacherRepository.findById(id)
                 .orElseThrow(() -> new TeacherNotFoundException(id));
 
+        // Soft delete
         teacher.setStatus(UserStatus.DELETED);
     }
 
@@ -114,18 +122,15 @@ public class TeacherService {
             throw new InvalidDniForCodeGenerationException(dni);
         }
 
-        // Mantener solo números
         String cleaned = dni.replaceAll("\\D", "");
         if (cleaned.isEmpty()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
 
-        // Tomar los últimos 6 dígitos, padded si son menos
         String lastDigits = cleaned.length() < 6
                 ? String.format("%06d", Integer.parseInt(cleaned))
                 : cleaned.substring(cleaned.length() - 6);
 
         return prefix + lastDigits;
     }
-
 }
