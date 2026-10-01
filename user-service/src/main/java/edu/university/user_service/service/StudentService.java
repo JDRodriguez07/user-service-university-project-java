@@ -8,6 +8,7 @@ import edu.university.user_service.exceptions.*;
 import edu.university.user_service.mapper.StudentMapper;
 import edu.university.user_service.model.Role;
 import edu.university.user_service.model.Student;
+import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.StudentRepository;
 import edu.university.user_service.repository.UserRepository;
@@ -25,9 +26,6 @@ public class StudentService {
     private StudentRepository studentRepository;
 
     @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -35,6 +33,9 @@ public class StudentService {
 
     @Autowired
     private RoleService roleService;
+
+    @Autowired
+    private PersonRepository personRepository;
 
     public List<StudentResponseDTO> getAllStudents() {
         return studentRepository.findAll()
@@ -54,6 +55,10 @@ public class StudentService {
 
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new EmailAlreadyExistsException(dto.getEmail());
+        }
+
+        if (personRepository.existsByDocumentTypeAndDni(dto.getDocumentType(), dto.getDni())) {
+            throw new PersonAlreadyExistsException(dto.getDocumentType().name(), dto.getDni());
         }
 
         Student student = studentMapper.toEntity(dto);
