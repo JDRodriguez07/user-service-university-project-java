@@ -18,14 +18,14 @@ public class Student extends Person {
     @Column(name = "student_code", nullable = false, length = 30)
     private String studentCode;
 
-    @Column(name = "admission_date", nullable = false)
+    @Column(name = "admission_date")
     private LocalDate admissionDate;
 
     @Column(name = "graduation_date")
     private LocalDate graduationDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "student_status", nullable = false, length = 20)
     private StudentStatus studentStatus = StudentStatus.ENROLLED;
 
     @Column(name = "gpa", precision = 3, scale = 2) // ej. 4.50, 3.80

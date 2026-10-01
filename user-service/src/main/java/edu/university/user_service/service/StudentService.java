@@ -3,12 +3,12 @@ package edu.university.user_service.service;
 import edu.university.user_service.dto.CreateStudentDTO;
 import edu.university.user_service.dto.StudentResponseDTO;
 import edu.university.user_service.dto.UpdateStudentDTO;
-import edu.university.user_service.enums.StudentStatus;
 import edu.university.user_service.enums.UserStatus;
 import edu.university.user_service.exceptions.*;
 import edu.university.user_service.mapper.StudentMapper;
 import edu.university.user_service.model.Role;
 import edu.university.user_service.model.Student;
+import edu.university.user_service.repository.PersonRepository;
 import edu.university.user_service.repository.RoleRepository;
 import edu.university.user_service.repository.StudentRepository;
 import edu.university.user_service.repository.UserRepository;
@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -27,13 +26,16 @@ public class StudentService {
     private StudentRepository studentRepository;
 
     @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private StudentMapper studentMapper;
+
+    @Autowired
+    private RoleService roleService;
+
+    @Autowired
+    private PersonRepository personRepository;
 
     public List<StudentResponseDTO> getAllStudents() {
         return studentRepository.findAll()
@@ -55,30 +57,21 @@ public class StudentService {
             throw new EmailAlreadyExistsException(dto.getEmail());
         }
 
+        if (personRepository.existsByDocumentTypeAndDni(dto.getDocumentType(), dto.getDni())) {
+            throw new PersonAlreadyExistsException(dto.getDocumentType().name(), dto.getDni());
+        }
+
         Student student = studentMapper.toEntity(dto);
 
-        Role role = roleRepository.findByName("STUDENT")
-                .orElseThrow(() -> new RoleNotFoundException("STUDENT"));
+        Role role = roleService.getOrCreateRole("STUDENT", "Student role");
         student.setRole(role);
-
-        if (student.getStatus() == null) {
-            student.setStatus(UserStatus.ACTIVE);
-        }
-
-        if (student.getStudentStatus() == null) {
-            student.setStudentStatus(StudentStatus.ENROLLED);
-        }
 
         if (student.getAdmissionDate() == null) {
             student.setAdmissionDate(LocalDate.now());
         }
 
-        String studentCode = generateCodeFromDni("S", student.getDni());
+        String studentCode = generateCodeFromDni("STU", student.getDni());
         student.setStudentCode(studentCode);
-
-        LocalDateTime now = LocalDateTime.now();
-        student.setCreatedAt(now);
-        student.setUpdatedAt(now);
 
         Student saved = studentRepository.save(student);
         return studentMapper.toResponse(saved);
@@ -96,16 +89,8 @@ public class StudentService {
             }
         }
 
+        // Actualización parcial de todos los campos (incluidos status y studentStatus)
         studentMapper.updateEntityFromDto(dto, student);
-
-        if (dto.getStatus() != null) {
-            student.setStatus(dto.getStatus());
-        }
-        if (dto.getStudentStatus() != null) {
-            student.setStudentStatus(dto.getStudentStatus());
-        }
-
-        student.setUpdatedAt(LocalDateTime.now());
 
         Student updated = studentRepository.save(student);
         return studentMapper.toResponse(updated);
@@ -113,23 +98,29 @@ public class StudentService {
 
     @Transactional
     public void deleteStudent(Long id) {
-        if (!studentRepository.existsById(id)) {
-            throw new StudentNotFoundException(id);
-        }
-        studentRepository.deleteById(id);
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new StudentNotFoundException(id));
+
+        student.setStatus(UserStatus.DELETED); // o INACTIVE
     }
 
     private String generateCodeFromDni(String prefix, String dni) {
         if (dni == null || dni.isBlank()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
+
+        // Mantener solo números
         String cleaned = dni.replaceAll("\\D", "");
         if (cleaned.isEmpty()) {
             throw new InvalidDniForCodeGenerationException(dni);
         }
-        String lastDigits = cleaned.length() <= 6
-                ? cleaned
+
+        // Tomar los últimos 6 dígitos (padded si vienen menos de 6)
+        String lastDigits = cleaned.length() < 6
+                ? String.format("%06d", Integer.parseInt(cleaned)) // agrega ceros a la izquierda
                 : cleaned.substring(cleaned.length() - 6);
+
         return prefix + lastDigits;
     }
+
 }

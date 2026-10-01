@@ -11,18 +11,13 @@ import java.time.LocalDate;
 
 /**
  * DTO used to update an existing Teacher.
+ * All fields are optional; only non-null values are applied.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateTeacherDTO {
-
-    private String dni;
-    private String name;
-    private String lastName;
-    private String phoneNumber;
-    private String address;
+public class UpdateTeacherDTO extends PersonBaseDTO {
 
     @Email(message = "Invalid email format.")
     private String email;
