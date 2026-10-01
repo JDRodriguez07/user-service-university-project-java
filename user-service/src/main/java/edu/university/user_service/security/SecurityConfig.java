@@ -27,6 +27,7 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
 
                         // ===== Endpoints públicos =====
@@ -50,31 +51,44 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/administrators/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/administrators/**").hasRole("ADMIN")
 
-                        // ===== Perfil propio: ADMIN, STUDENT y TEACHER pueden editar sus datos básicos =====
+                        // ===== Perfil propio =====
                         .requestMatchers(HttpMethod.PUT, "/users/me/profile")
                         .hasAnyRole("ADMIN", "STUDENT", "TEACHER")
 
-                        // ===== Lecturas (GET) solo autenticado (cualquier rol) =====
+                        // ===== Lecturas =====
                         .requestMatchers(HttpMethod.GET, "/students/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/teachers/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/administrators/**").authenticated()
 
-                        // ===== Todo lo demás requiere estar autenticado =====
-                        .anyRequest().authenticated())
-
-                // Registrar tu filtro JWT antes del filtro de username/password
+                        // ===== Cualquier otra petición requiere autenticación =====
+                        .anyRequest().authenticated()
+                )
                 .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // AuthenticationManager (para usar en UserService.login)
+    @Bean
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+        org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+        config.addAllowedOrigin("http://localhost:8080"); 
+        config.addAllowedOrigin("http://localhost:5173"); 
+        config.addAllowedMethod("*");
+        config.addAllowedHeader("*");
+        config.setAllowCredentials(true);
+
+        org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
+                new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+
+        return source;
+    }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    // PasswordEncoder global
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
