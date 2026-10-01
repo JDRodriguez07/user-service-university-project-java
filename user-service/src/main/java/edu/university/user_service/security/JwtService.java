@@ -33,9 +33,17 @@ public class JwtService {
     // Genera un token con claims extra
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
 
+        String role = userDetails.getAuthorities()
+                         .stream()
+                         .findFirst()
+                         .get()
+                         .getAuthority();
+
+
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername()) // El "username" aquí es nuestro "email"
+                .claim("role", role)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
