@@ -6,7 +6,8 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.core.Authentication;
+import edu.university.user_service.dto.UpdateProfileDTO;
 import edu.university.user_service.dto.CreateUserDTO;
 import edu.university.user_service.dto.UpdateUserDTO;
 import edu.university.user_service.dto.UserResponseDTO;
@@ -41,6 +42,24 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserDTO dto) {
         return ResponseEntity.ok(userService.updateUser(id, dto));
+    }
+
+    /**
+     * Actualiza el perfil del usuario autenticado.
+     * Solo permite cambiar password, gender, phoneNumber y address.
+     *
+     * URL: PUT /users/me/profile
+     */
+    @PutMapping("/me/profile")
+    public ResponseEntity<UserResponseDTO> updateOwnProfile(
+            Authentication authentication,
+            @RequestBody UpdateProfileDTO dto) {
+
+        // El email viene del UserDetails cargado a partir del JWT
+        String email = authentication.getName();
+
+        UserResponseDTO updated = userService.updateOwnProfile(email, dto);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
